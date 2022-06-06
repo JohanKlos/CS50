@@ -14,8 +14,27 @@ V -> "arrived" | "came" | "chuckled" | "had" | "lit" | "said" | "sat"
 V -> "smiled" | "tell" | "were"
 """
 
+# komt Grondslagen toch nog van pas!
+# remember recursion, it can refer to itself for repetition
 NONTERMINALS = """
-S -> N V
+S -> NP VP | S Conj S | S P S
+NP -> N | Det AdjN | NP PNP
+AdjN -> N | Adj AdjN
+PNP -> P NP
+VP -> V | V NP | VP PNP | VP Adv | Adv VP | VP Conj VP
+"""
+
+"""
+ : Holmes sat.
+ : Holmes lit a pipe.
+ : We arrived the day before Thursday.
+ : Holmes sat in the red armchair and he chuckled.
+ : My companion smiled an enigmatical smile.
+ : Holmes chuckled to himself.
+ : She never said a word until we were at the door here.
+ : Holmes sat down and lit his pipe.
+ : I had a country walk on Thursday and came home in a dreadful mess.
+ : I had a little moist red paint in the palm of my hand.
 """
 
 grammar = nltk.CFG.fromstring(NONTERMINALS + TERMINALS)
@@ -62,7 +81,28 @@ def preprocess(sentence):
     and removing any word that does not contain at least one alphabetic
     character.
     """
-    raise NotImplementedError
+    # create empty list
+    words = []
+    # make sentence lowercase and then split per space
+    
+    try:
+        words = nltk.word_tokenize(sentence.lower())
+    except:
+        # https://www.nltk.org/api/nltk.tokenize.html#nltk.tokenize.punkt.PunktLanguageVars.word_tokenize
+        # to prevent the error: "Resource punkt not found" you have to do
+        nltk.download('punkt')
+        words = nltk.word_tokenize(sentence.lower())
+        
+    
+    # remove all words that does not contain at least one alphabetic char
+    results = []
+    for word in words:
+        # if we just do isalpha() then words like "o'clock" are excluded
+        # so use the any-for-in statement
+        if any(c.isalpha() for c in word):
+            results.append(word)
+    
+    return results
 
 
 def np_chunk(tree):
@@ -72,8 +112,39 @@ def np_chunk(tree):
     whose label is "NP" that does not itself contain any other
     noun phrases as subtrees.
     """
-    raise NotImplementedError
+    # create empty list
+    chunks = []
+    
+    # return a list of nltk.tree objects, where each element has the label NP
+    # https://www.nltk.org/_modules/nltk/tree.html
+    
+    # we have to make a new subtree when an NP is found
+    # recursion is key, so make a function for it
+    def search_np(subtree):
+        # search subtrees using recursion
+        for sub in subtree.subtrees():
+            # skip the current subtree
+            if sub == subtree:
+                continue    
+            # search for NP
+            if sub.label() == "NP":
+                return True
+            # recursion!
+            if search_np(sub):
+                return True
+            # there was no return yet, so return False
+        return False
 
+    for sub in tree.subtrees():
+        # for all subtrees labeled NP
+        if sub.label() == "NP":
+            # that does not contain any NP subtree
+            if not search_np(sub):
+                # append to the np chunks list
+                chunks.append(sub)
 
+    return chunks
+    
+    
 if __name__ == "__main__":
     main()
